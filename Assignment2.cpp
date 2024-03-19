@@ -13,14 +13,27 @@
 
 #include "ray.h"
 
+using namespace std;
+
 
 class Sphere{
+
     private:
         vec3 position;
         vec3 color ;
-        double radius;
+        float radius;
     
     public:
+
+        Sphere(){}
+
+        Sphere(vec3 position, vec3 color, float radius){
+            this->position = position;
+            this->color = color;
+            this->radius = radius;
+        }
+
+
         // Getters
         vec3 getPosition() const {
             return position;
@@ -35,11 +48,11 @@ class Sphere{
         }
 
         // Setters
-        void setPosition(const vec3& newPosition) {
+        void setPosition(vec3 newPosition) {
             position = newPosition;
         }
 
-        void setColor(const vec3& newColor) {
+        void setColor(vec3 newColor) {
             color = newColor;
         }
 
@@ -47,10 +60,19 @@ class Sphere{
             radius = newRadius;
         }
         
+        bool Hit(const ray&, double&){
+            return true;
+        }
 };
 
 
 
 int main()
 {
+
+    Sphere s1(vec3(1,2,3) , vec3(1,0,0) , 6.0);
+
+    
+
+    
 }
