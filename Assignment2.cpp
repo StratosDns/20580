@@ -1,112 +1,90 @@
-/**
- * @file Assignment2.cpp
- *  
- * @brief Assignment 2 - HY-150
- * 
- * @author: csd5598
- */
-
 #include <iostream>
 #include <fstream>
-
+#include <vector>
 #include "vec3.h"
-
 #include "ray.h"
+#include "color.h"
+#include "World.cpp"
 
 using namespace std;
 
-
-class Sphere{
-
-    private:
-        vec3 position;
-        vec3 color ;
-        float radius;
-    
-    public:
-
-        Sphere(){}
-
-        Sphere(vec3 position, vec3 color, float radius){
-            this->position = position;
-            this->color = color;
-            this->radius = radius;
-        }
-
-
-        // Getters
-        vec3 getPosition() const {
-            return position;
-        }
-
-        vec3 getColor() const {
-            return color;
-        }
-
-        double getRadius() const {
-            return radius;
-        }
-
-        // Setters
-        void setPosition(vec3 newPosition) {
-            position = newPosition;
-        }
-
-        void setColor(vec3 newColor) {
-            color = newColor;
-        }
-
-        void setRadius(double newRadius) {
-            radius = newRadius;
-        }
-        
-        bool hit_sphere(const point3 &center, double radius, const ray &r){
-            // calculates the vector from the sphere's center to the origin of the ray. 
-            // This is done by subtracting the center of the sphere from the origin of the ray.
-            vec3 oc = r.origin() - center;
-            
-            // This line calculates the dot product of the ray's direction with itself. 
-            // This is equivalent to the square of the length of the direction vector, 
-            // which is always 1 for a normalized direction vector.
-            auto a = dot(r.direction(), r.direction());
-            
-            // This line calculates twice the dot product of the vector oc and the ray's direction. 
-            // This is part of the quadratic equation used to find the intersection points of the ray and the sphere.
-            auto b = 2.0 * dot(oc, r.direction());
-            
-            // This line calculates the dot product of the vector oc with itself, which is the square of the length of oc, 
-            // and subtracts the square of the sphere's radius. This is also part of the quadratic equation.
-            auto c = dot(oc, oc) - radius * radius;
-            
-            // This line calculates the discriminant of the quadratic equation. 
-            // The discriminant is used to determine the number of solutions to the equation.
-            auto discriminant = b * b - 4 * a * c;
-            
-            // This line returns a boolean value indicating whether the discriminant is greater than or equal to zero. 
-            // If the discriminant is negative, the quadratic equation has no real solutions, 
-            // which means the ray does not intersect the sphere. 
-            // If the discriminant is zero or positive, the equation has one or two real solutions, 
-            // which means the ray intersects the sphere at one or two points.
-            return (discriminant >= 0);
-        }
-};
-
-
-
-
-
 int main()
 {
-
-    Sphere s1(vec3(1,2,3) , vec3(1,0,0) , 2.0);
-
-    ray r1(vec3(1,2,3) , vec3(1,0,0));
-
-    bool hit = s1.hit_sphere(s1.getPosition(), s1.getRadius(), r1);
-
-    if(hit){
-        cout << "The ray intersects with the sphere" << endl;
-
-    
+    ifstream inputFile("world.txt");
+    if (!inputFile)
+    {
+        cerr << "Failed to open world.txt" << endl;
+        return 1;
     }
+
+    string filename;
+    getline(inputFile, filename);
+
+    double cameraCenterX, cameraCenterY, cameraCenterZ;
+    inputFile >> cameraCenterX >> cameraCenterY >> cameraCenterZ;
+    vec3 cameraCenter(cameraCenterX, cameraCenterY, cameraCenterZ);
+
+    int imageWidth, imageHeight;
+    inputFile >> imageWidth >> imageHeight;
+
+    double skyColorR, skyColorG, skyColorB;
+    inputFile >> skyColorR >> skyColorG >> skyColorB;
+    color skyColor(skyColorR, skyColorG, skyColorB);
+
+    int numSpheres;
+    inputFile >> numSpheres;
+
+    vector<Sphere> spheres;
+    for (int i = 0; i < numSpheres; i++)
+    {
+        double sphereColorR, sphereColorG, sphereColorB;
+        inputFile >> sphereColorR >> sphereColorG >> sphereColorB;
+        color sphereColor(sphereColorR, sphereColorG, sphereColorB);
+
+        double spherePositionX, spherePositionY, spherePositionZ;
+        inputFile >> spherePositionX >> spherePositionY >> spherePositionZ;
+        vec3 spherePosition(spherePositionX, spherePositionY, spherePositionZ);
+
+        double sphereRadius;
+        inputFile >> sphereRadius;
+
+        spheres.push_back(Sphere(spherePosition, sphereColor, sphereRadius));
+    }
+
+    inputFile.close();
+
+    auto focal_length = 1.0;
+    auto viewport_height = 2.0;
+    auto viewport_width = viewport_height * (static_cast<double>(imageWidth) / imageHeight);
+
+    Camera camera(cameraCenter, imageWidth, imageHeight);
+
+    World world(spheres, skyColor);
+
+    auto viewport_u = vec3(viewport_width, 0, 0);
+    auto viewport_v = vec3(0, -viewport_height, 0);
+
+    // Calculate the horizontal and vertical delta vectors from pixel to pixel.
+    auto pixel_delta_u = viewport_u / imageWidth;
+    auto pixel_delta_v = viewport_v / imageHeight;
+    
+    // Calculate the position of the upper left corner of a viewport
+    // and the location of the center of the pixel at the (0,0) position in a 3D space.
+    // It starts from the camera_center, moves backwards along the z-axis by
+    // focal_length units (since vec3(0, 0, focal_length) represents a vector pointing along the z-axis),
+    // and then moves half the viewport's width and height in the negative u and v directions.
+    // The result is stored in the viewport_upper_left variable.
+    auto viewport_upper_left = camera.getCenter() - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+
+    // This line calculates the location of the center of the pixel at the (0,0) position.
+    //  It starts from the viewport_upper_left position, and then moves half the width and
+    //  height of a pixel in the positive u and v directions. The result is stored in the pixel00_loc variable.
+    auto pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+    world.Render(camera, pixel00_loc, pixel_delta_u, pixel_delta_v, filename, world);
+
+    string openCommand = "start " + filename + ".ppm";
+    system(openCommand.c_str());
+
+    return 0;
 }

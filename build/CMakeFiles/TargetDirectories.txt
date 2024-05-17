@@ -1,4 +1,0 @@
-C:/uni/CSD/CPP/Assignment2/build/CMakeFiles/assignment2.dir
-C:/uni/CSD/CPP/Assignment2/build/CMakeFiles/example.dir
-C:/uni/CSD/CPP/Assignment2/build/CMakeFiles/edit_cache.dir
-C:/uni/CSD/CPP/Assignment2/build/CMakeFiles/rebuild_cache.dir
